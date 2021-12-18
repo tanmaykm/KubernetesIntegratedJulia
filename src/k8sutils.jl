@@ -7,13 +7,20 @@ const Service = Kuber.Typedefs.CoreV1.Service
 const PodList = Kuber.Typedefs.CoreV1.PodList
 const WatchEvent = Kuber.Typedefs.CoreV1.WatchEvent
 
-function k8s_run(ctx::KuberContext, typ::Symbol, entity)
-    @debug("putting", typ, name=entity.metadata.name)
-    put!(ctx, entity)
-end
+"""
+    k8s_run
+
+Runs either a Pod or a Service on the k8s cluster
+"""
+k8s_run(ctx::KuberContext, typ::Symbol, entity) = put!(ctx, entity)
 k8s_run(ctx::KuberContext, entity::Pod) = k8s_run(ctx, :Pod, entity)
 k8s_run(ctx::KuberContext, entity::Service) = k8s_run(ctx, :Service, entity)
 
+"""
+    k8s_delete
+
+Deletes a Pod or Service from the k8s cluster
+"""
 function k8s_delete(ctx::KuberContext, typ::Symbol, name::String)
     @debug("deleting", typ, name)
     try
@@ -23,7 +30,20 @@ function k8s_delete(ctx::KuberContext, typ::Symbol, name::String)
     end
 end
 
-function k8s_run_command(ctx, name, method)
+"""
+    k8s_run_pipeline_command(ctx, name, method)
+
+Runs one of the commands that constitute the pipeline for
+preparing the search server for deployment. Each command
+deploys a pod on the cluster that invokes a certain method
+provided by the search server.
+
+Commands can be:
+- fetch_sources
+- extract_sources
+- index_sources
+"""
+function k8s_run_pipeline_command(ctx, name, method)
     pod = kuber_obj(ctx, """{
         "apiVersion": "v1",
         "kind": "Pod",
@@ -56,18 +76,25 @@ function k8s_run_command(ctx, name, method)
     k8s_run(ctx, pod)
 end
 
-k8s_fetch_sources(ctx) = k8s_run_command(ctx, "fetch", "fetch_sources")
-k8s_extract_sources(ctx) = k8s_run_command(ctx, "extract", "extract_sources")
-k8s_index_sources(ctx) = k8s_run_command(ctx, "index", "index_sources")
+k8s_fetch_sources(ctx) = k8s_run_pipeline_command(ctx, "fetch", "fetch_sources")
+k8s_extract_sources(ctx) = k8s_run_pipeline_command(ctx, "extract", "extract_sources")
+k8s_index_sources(ctx) = k8s_run_pipeline_command(ctx, "index", "index_sources")
 
+"""
+    k8s_run_search_server(ctx)
+
+Deploy both
+- the server as a pod
+- a service that exposes it over a port
+"""
 function k8s_run_search_server(ctx)
     service = kuber_obj(ctx, """{
         "apiVersion": "v1",
         "kind": "Service",
         "metadata": {
-            "name": "searchsvc",
+            "name": "search",
             "namespace": "default",
-            "labels": {"name": "searchsvc"}
+            "labels": {"name": "search"}
         },
         "spec": {
             "type": "NodePort",
@@ -114,6 +141,58 @@ function k8s_run_search_server(ctx)
 end
 
 """
+    k8s_delete_search_server
+
+Deletes both the search server pod and the service
+"""
+function k8s_delete_search_server(ctx::KuberContext)
+    k8s_delete(ctx, :Pod, "search")
+    k8s_delete(ctx, :Service, "search")
+end
+
+"""
+    advance
+
+Advances the pipeline between stages
+"""
+function advance(ctx::KuberContext, stage::Symbol)
+    try
+        if stage == :init
+            stage = :fetching
+            k8s_delete_search_server(ctx)
+            k8s_fetch_sources(ctx)
+        elseif stage == :fetching
+            stage = :extracting
+            k8s_delete(ctx, :Pod, "fetch")
+            k8s_extract_sources(ctx)
+        elseif stage == :extracting
+            stage = :indexing
+            k8s_delete(ctx, :Pod, "extract")
+            k8s_index_sources(ctx)
+        elseif stage == :indexing
+            stage = :running
+            k8s_delete(ctx, :Pod, "index")
+            k8s_run_search_server(ctx)
+        end
+    catch ex
+        @error("error handling event", exception=(ex,catch_backtrace()))
+        # TODO: better error handling here
+        # for the demo we just log
+    end
+
+    return stage
+end
+
+function can_advance(pod, stage)
+    # We are interested in knowing when a Pod state is modified to "Succeeded".
+    # In reality we should also monitor failure states for error handling.
+    (pod.status.phase == "Succeeded") &&
+    ((pod.metadata.name == "fetch"   && stage == :fetching) ||
+     (pod.metadata.name == "extract" && stage == :extracting) ||
+     (pod.metadata.name == "index"   && stage == :indexing))
+end
+
+"""
     k8s_update_search_server()
 
 Run this periodically to refresh the search server.
@@ -128,64 +207,30 @@ Actions:
 function k8s_update_search_server()
     ctx = KuberContext()
     Kuber.set_api_versions!(ctx)
-    pipeline_state = :init
+    stage = :init
     println("starting")
 
     watch(ctx, list, :Pod) do stream
-        k8s_delete(ctx, :Pod, "search")
-        k8s_delete(ctx, :Service, "searchsvc")
-
         for event in stream
-            try
-                #@info("got event", typ=typeof(event))
-                if isa(event, WatchEvent)
-                    entity = kuber_obj(ctx, event.object)
-                    if isa(entity, Pod)
-                        pod = entity
-                        #@info("got pod event", typ=event.type, pod=pod.metadata.name)
-                        if event.type == "MODIFIED"
-                            # we are interested in knowing when a Pod state is modified to "Succeeded"
-                            print("$(pod.metadata.name) $(pod.status.phase)                    \r")
-                            if pod.status.phase == "Succeeded"
-                                if pod.metadata.name == "fetch"
-                                    if pipeline_state == :fetching
-                                        pipeline_state = :extracting
-                                        k8s_delete(ctx, :Pod, "fetch")
-                                        @debug("fetch done, starting extract")
-                                        k8s_extract_sources(ctx)
-                                    end
-                                elseif pod.metadata.name == "extract"
-                                    if pipeline_state == :extracting
-                                        pipeline_state = :indexing
-                                        k8s_delete(ctx, :Pod, "extract")
-                                        @debug("fetch done, starting index")
-                                        k8s_index_sources(ctx)
-                                    end
-                                elseif pod.metadata.name == "index"
-                                    if pipeline_state == :indexing
-                                        pipeline_state = :running
-                                        k8s_delete(ctx, :Pod, "index")
-                                        @debug("index done, restarting search server")
-                                        k8s_run_search_server(ctx)
-                                        @debug("search server started, closing stream")
-                                        close(stream)
-                                    end
-                                end
-                            end
+            if isa(event, PodList)
+                # watch is set up
+                # the first event of a watch is where it returns the existing list of pods
+                # we trigger the first step of the pipeline here
+                stage = advance(ctx, stage)
+            elseif isa(event, WatchEvent)
+                # subsequent events are WatchEvents on individual pods
+                # we are interestes only on pod state modification events
+                pod = kuber_obj(ctx, event.object)
+                if event.type == "MODIFIED"
+                    print("$(pod.metadata.name) $(pod.status.phase)                    \r")
+                    if can_advance(pod, stage)
+                        stage = advance(ctx, stage)
+                        if stage == :running
+                            # we are done when our application is updated and reaches the running stage
+                            close(stream)
                         end
                     end
-                elseif isa(event, PodList)
-                    # watch is set up, this is the first event of a watch where it returns the existing list of pods
-                    # this is where we trigger the first step of the pipeline
-                    if pipeline_state == :init
-                        @debug("starting fetch")
-                        pipeline_state = :fetching
-                        k8s_fetch_sources(ctx)
-                    end
                 end
-                @debug("pipeline state: $pipeline_state")
-            catch ex
-                @error("error handling event", exception=(ex,catch_backtrace()))
             end
         end
         println("")

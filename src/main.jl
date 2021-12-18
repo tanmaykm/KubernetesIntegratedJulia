@@ -1,3 +1,5 @@
+# Runs the pipeline stage provided as argument
+
 using Pkg
 
 const projectdir = get(ENV, "PROJECTDIR", "/project")

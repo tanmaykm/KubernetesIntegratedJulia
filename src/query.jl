@@ -1,7 +1,17 @@
 using HTTP, JSON
 
+"""
+    query
+
+Fire a query to the server.
+Display the search results.
+"""
 function query(pattern)
-    resp = HTTP.request("POST", "http://127.0.0.1:30005/search", [], "{\"pattern\": \"$pattern\"}")
+    resp = HTTP.request("POST",
+            "http://127.0.0.1:30005/search",
+            [],
+            "{\"pattern\": \"$pattern\"}"
+        )
     jsonresp = JSON.parse(String(resp.body))
     @assert jsonresp["success"]
     for x in jsonresp["data"]
