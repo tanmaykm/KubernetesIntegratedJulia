@@ -2,13 +2,16 @@
 
 using Pkg
 
+# setup environment
 const projectdir = get(ENV, "PROJECTDIR", "/project")
 const workdir = joinpath(projectdir, "data")
 
 Pkg.activate(projectdir)
 
+# include methods that implement the pipeline stages
 include("utils.jl")
 
+# look for the stage to run
 const command = ARGS[1]
 
 if command == "fetch_sources"
