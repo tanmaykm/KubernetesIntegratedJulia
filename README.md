@@ -1,14 +1,15 @@
 # Kubernetes Integrated Julia Applications
 
 ## Webinar
-- What is Kubernetes (k8s)
-- Kuber.jl - Julia Package for interacting with Kubernetes
-    - Basic APIs - get, put, delete
-    - Monitoring Cluster Events - the watch API
+- Kubernetes & Kuber.jl
+  - Kuber.jl - Julia Package for interacting with Kubernetes
+- Kuber.jl APIs
+  - Basic APIs - get, put, delete
+  - Monitoring cluster events - the watch API
 - Example: Code Search Server on Kubernetes
-    - Pipeline to crawl sources, download and index them
-    - Serve HTTP APIs to search the index
-    - Update index periodically
+  - Pipeline to crawl sources, download and index them
+  - Serve HTTP APIs to search the index
+  - Update index periodically
 
 ### Search server
 - [search server methods](src/utils.jl)
