@@ -1,11 +1,18 @@
+# Layer that integrates with k8s
+# - deploys pipeline stages on k8s
+# - monitors the status of the pipeline stages
+
 using Kuber
 
 const projectdir = dirname(@__DIR__)
 
-const Pod = Kuber.Typedefs.CoreV1.Pod
-const Service = Kuber.Typedefs.CoreV1.Service
-const PodList = Kuber.Typedefs.CoreV1.PodList
-const WatchEvent = Kuber.Typedefs.CoreV1.WatchEvent
+const ApiImpl = Kuber.ApiImpl
+const CoreV1 = ApiImpl.Typedefs.CoreV1
+
+const Pod = CoreV1.Pod
+const Service = CoreV1.Service
+const PodList = CoreV1.PodList
+const WatchEvent = CoreV1.WatchEvent
 
 """
     k8s_run
@@ -145,7 +152,7 @@ end
 
 Deletes both the search server pod and the service
 """
-function k8s_delete_search_server(ctx::KuberContext)
+function k8s_delete_search_server(ctx::KuberContext=KuberContext())
     k8s_delete(ctx, :Pod, "search")
     k8s_delete(ctx, :Service, "search")
 end

@@ -59,9 +59,9 @@ version = "0.21.2"
 
 [[Kuber]]
 deps = ["Dates", "Downloads", "JSON", "Random", "Swagger"]
-git-tree-sha1 = "435618e078b925ddc1310c2ff79c638f6f1c6af0"
+git-tree-sha1 = "8c4c6e4c7ccc48630e2b646164aabf33adfa3038"
 uuid = "87e52247-8a1b-5e01-9430-8fbcac83a23a"
-version = "0.5.1"
+version = "0.6.0"
 
 [[LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
@@ -110,9 +110,9 @@ uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
 
 [[Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "ae4bbcadb2906ccc085cf52ac286dc1377dceccc"
+git-tree-sha1 = "d7fa6237da8004be601e19bd6666083056649918"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.1.2"
+version = "2.1.3"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
@@ -141,9 +141,9 @@ uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
 
 [[Swagger]]
 deps = ["Dates", "Downloads", "JSON", "LibCURL", "MbedTLS", "URIs"]
-git-tree-sha1 = "7bd0236489dafe00b992299389230ee55c06adc1"
+git-tree-sha1 = "f4bf7956178a917bab36e953b9e87eedb55e42e1"
 uuid = "2d69052b-6a58-5cd9-a030-a48559c324ac"
-version = "0.3.3"
+version = "0.3.4"
 
 [[TOML]]
 deps = ["Dates"]

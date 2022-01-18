@@ -1,4 +1,4 @@
-FROM julia:1.6.0
+FROM julia:1.6.5
 
 RUN mkdir -p /project/data
 WORKDIR /project

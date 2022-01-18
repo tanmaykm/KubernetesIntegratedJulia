@@ -23,3 +23,17 @@
 - [Slides](KubernetesIntegratedJuliaApplications.pdf)
 - [Kuber.jl](https://github.com/JuliaComputing/Kuber.jl)
 - [GoogleCodeSearch.jl](https://github.com/tanmaykm/GoogleCodeSearch.jl)
+
+### Screencasts
+
+#### Using Kuber.jl
+
+`asciinema play screencasts/462454.cast`
+
+[![Screencast - Using Kuber.jl](https://asciinema.org/a/462454.svg)](https://asciinema.org/a/462454)
+
+#### Search server pipeline
+
+`asciinema play screencasts/462469.cast`
+
+[![Screencast - Search server pipeline](https://asciinema.org/a/462469.svg)](https://asciinema.org/a/462469)
